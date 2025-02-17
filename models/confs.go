@@ -10,7 +10,7 @@ type Conf struct {
 	StartTime  string `gorm:"not null" validate:"required" json:"start_time"`
 	EndDate    string `json:"end_date"`
 	EndTime    string `json:"end_time"`
-	Corps      string `gorm:"default:'Первый'" validate:"oneof=corps1 corps2 other" json:"corps"`
+	Corps      string `gorm:"default:'Первый'" validate:"required" json:"corps"`
 	Location   string `gorm:"not null" validate:"required" json:"location"`
 	Platform   string `gorm:"default:'Другое'" json:"platform"`
 	Devices    string `gorm:"default:'none'" json:"devices"`
