@@ -2,7 +2,7 @@ package models
 
 type Lecture struct {
 	ID           uint   `gorm:"primaryKey;autoIncrement" json:"id"`
-	CurrentDate  string `gorm:"not null" validate:"required" json:"current_date"`
+	Date         string `gorm:"not null" validate:"required" json:"date"`
 	GroupType    uint   `gorm:"not null" validate:"required" json:"group_type"`
 	StartTime    string `gorm:"not null"  validate:"required" json:"start_time"`
 	EndTime      string `gorm:"not null" validate:"required" json:"end_time"`

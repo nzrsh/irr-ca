@@ -34,7 +34,7 @@ func UpdateLecById(id uint64, lec models.Lecture) (*models.Lecture, error) {
 		return nil, errors.New("lec not found")
 	}
 
-	existingLec.CurrentDate = lec.CurrentDate
+	existingLec.Date = lec.Date
 	existingLec.GroupType = lec.GroupType
 	existingLec.StartTime = lec.StartTime
 	existingLec.EndTime = lec.EndTime
@@ -58,8 +58,9 @@ func UpdateLecById(id uint64, lec models.Lecture) (*models.Lecture, error) {
 
 func GetLecsByDay(day string) ([]models.Lecture, error) {
 	var lecs []models.Lecture
-	if err := DB.Where("current_date = ?", day).Find(&lecs).Error; err != nil {
-		return nil, errors.New("failed to fetch lecs")
+
+	if err := DB.Where("date = ?", day).Find(&lecs).Error; err != nil {
+		return nil, errors.New("failed to get lecs by day: " + err.Error())
 	}
 
 	return lecs, nil

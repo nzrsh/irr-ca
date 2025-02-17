@@ -15,7 +15,7 @@ func CreateLec(c *fiber.Ctx) error {
 	var lec models.Lecture
 
 	if err := c.BodyParser(&lec); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса", "details": err.Error()})
 	}
 
 	// Валидация структуры
@@ -35,17 +35,32 @@ func CreateLec(c *fiber.Ctx) error {
 }
 
 func GetLecsByCurrentDate(c *fiber.Ctx) error {
+	// Получаем дату из параметров запроса
 	currentDate := c.Params("date")
+
+	// Проверяем формат даты
 	_, err := time.Parse("2006-01-02", currentDate)
 	if err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса. Используйте формат YYYY-MM-DD."})
+		log.Errorf("Неверный формат даты: %s", currentDate)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Неверный формат запроса. Используйте формат YYYY-MM-DD.",
+		})
 	}
 
+	// Получаем данные из базы данных
 	lecs, err := database.GetLecsByDay(currentDate)
 	if err != nil {
-		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Внутренняя ошибка сервера."})
+		log.Errorf("Ошибка при получении данных из базы данных: %s", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+			"error": "Внутренняя ошибка сервера.",
+		})
 	}
 
+	if len(lecs) == 0 {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Лекции не найдены.",
+		})
+	}
 	return c.JSON(lecs)
 }
 
