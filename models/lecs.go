@@ -13,6 +13,7 @@ type Lecture struct {
 	Groups       string `json:"groups"`
 	Lectors      string `json:"lectors"`
 	URL          string `json:"url"`
+	ShortURL     string `json:"short_url"`
 	StreamKey    string `json:"stream_key"`
 	Account      string `json:"account"`
 	Commentary   string `json:"commentary"`

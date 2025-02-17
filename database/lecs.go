@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/nzrsh/irr-ca/models"
 )
 
@@ -64,4 +65,27 @@ func GetLecsByDay(day string) ([]models.Lecture, error) {
 	}
 
 	return lecs, nil
+}
+
+func UpdateLecShortURL(lecID uint, shortURL string) error {
+	// Находим лекцию по ID
+	var lec models.Lecture
+	result := DB.First(&lec, lecID)
+	if result.Error != nil {
+		log.Errorf("Ошибка при поиске лекции с ID %d: %s", lecID, result.Error)
+		return result.Error
+	}
+
+	// Обновляем поле ShortURL
+	lec.ShortURL = shortURL
+
+	// Сохраняем изменения в базе данных
+	result = DB.Save(&lec)
+	if result.Error != nil {
+		log.Errorf("Ошибка при обновлении лекции с ID %d: %s", lecID, result.Error)
+		return result.Error
+	}
+
+	log.Infof("Сокращенная ссылка для лекции с ID %d успешно обновлена", lecID)
+	return nil
 }

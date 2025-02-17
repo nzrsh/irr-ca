@@ -3,6 +3,7 @@ package database
 import (
 	"errors"
 
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/nzrsh/irr-ca/models"
 )
 
@@ -85,5 +86,39 @@ func DeleteConfById(id uint) error {
 		return errors.New("не удалось удалить конференцию")
 	}
 
+	return nil
+}
+
+func GetConfByID(id uint) (*models.Conf, error) {
+	var existingConf models.Conf
+	if err := DB.First(&existingConf, id).Error; err != nil {
+		return nil, errors.New("conference not found")
+	}
+
+	return &existingConf, nil
+}
+
+// UpdateConfShortURL обновляет сокращённую ссылку для конференции по её ID
+func UpdateConfShortURL(confID uint, shortURL string) error {
+	var conf models.Conf
+
+	// Находим конференцию по ID
+	result := DB.First(&conf, confID)
+	if result.Error != nil {
+		log.Errorf("Ошибка при поиске конференции с ID %d: %s", confID, result.Error)
+		return result.Error
+	}
+
+	// Обновляем поле ShortURL
+	conf.ShortURL = shortURL
+
+	// Сохраняем изменения в базе данных
+	result = DB.Save(&conf)
+	if result.Error != nil {
+		log.Errorf("Ошибка при обновлении конференции с ID %d: %s", confID, result.Error)
+		return result.Error
+	}
+
+	log.Errorf("Сокращённая ссылка для конференции с ID %d успешно обновлена", confID)
 	return nil
 }

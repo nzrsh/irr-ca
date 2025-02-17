@@ -19,7 +19,7 @@ func CreateLec(c *fiber.Ctx) error {
 	}
 
 	// Валидация структуры
-	if err := utils.Validate.Struct(lec); err != nil { // Исправлено: передаем conf, а не CreateConference
+	if err := utils.Validate.Struct(lec); err != nil {
 		log.Warnf("Ошибка валидации на создание лекции: %s", err)
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса", "details": err.Error()}) // Добавлено: возвращаем детали ошибки
 	}
@@ -29,6 +29,21 @@ func CreateLec(c *fiber.Ctx) error {
 	if err != nil {
 		log.Errorf("Ошибка создания лекции: %s", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Внутренняя ошибка сервера"})
+	}
+
+	if lec.URL != "" {
+		go func(lecID uint, originalURL string) {
+			shortURL, err := utils.GetShortUrl(originalURL)
+			if err != nil {
+				log.Errorf("Ошибка при сокращении ссылки: %s", err)
+				return
+			}
+
+			// Обновление записи в базе данных с сокращенной ссылкой
+			if err := database.UpdateLecShortURL(lecID, shortURL); err != nil {
+				log.Errorf("Ошибка обновления лекции с сокращенной ссылкой: %s", err)
+			}
+		}(lecture.ID, lec.URL)
 	}
 
 	return c.JSON(lecture)
@@ -65,18 +80,31 @@ func GetLecsByCurrentDate(c *fiber.Ctx) error {
 }
 
 func UpdateLec(c *fiber.Ctx) error {
+	// Получаем ID лекции из параметров запроса
 	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
-			"error": "Invalid ID",
+			"error": "Неверный формат ID",
 		})
 	}
 
+	// Получаем данные из тела запроса
 	var lec models.Lecture
 	if err := c.BodyParser(&lec); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса"})
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
+			"error": "Неверный формат запроса",
+		})
 	}
 
+	// Получаем текущую лекцию из базы данных
+	var existingLec models.Lecture
+	if err := database.DB.First(&existingLec, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Лекция не найдена",
+		})
+	}
+
+	// Обновляем лекцию в базе данных (без сокращённой ссылки)
 	updatedLec, err := database.UpdateLecById(id, lec)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -84,6 +112,23 @@ func UpdateLec(c *fiber.Ctx) error {
 		})
 	}
 
+	// Если URL изменился, запускаем асинхронное обновление сокращённой ссылки
+	if lec.URL != "" && lec.URL != existingLec.URL {
+		go func(lecID uint, originalURL string) {
+			shortURL, err := utils.GetShortUrl(originalURL)
+			if err != nil {
+				log.Errorf("Ошибка при сокращении ссылки: %s", err)
+				return
+			}
+
+			// Обновление записи в базе данных с сокращённой ссылкой
+			if err := database.UpdateLecShortURL(lecID, shortURL); err != nil {
+				log.Errorf("Ошибка обновления лекции с сокращённой ссылкой: %s", err)
+			}
+		}(updatedLec.ID, lec.URL)
+	}
+
+	// Возвращаем обновлённую лекцию
 	return c.JSON(updatedLec)
 }
 

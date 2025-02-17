@@ -16,6 +16,7 @@ type Conf struct {
 	Devices    string `gorm:"default:'none'" json:"devices"`
 	Status     string `gorm:"default:'Новая'" json:"status"`
 	URL        string `json:"url"`
+	ShortURL   string `json:"short_url"`
 	User       string `json:"user"`
 	Commentary string `json:"commentary"`
 }

@@ -19,9 +19,9 @@ func CreateConf(c *fiber.Ctx) error {
 	}
 
 	// Валидация структуры
-	if err := utils.Validate.Struct(conf); err != nil { // Исправлено: передаем conf, а не CreateConference
+	if err := utils.Validate.Struct(conf); err != nil {
 		log.Warnf("Ошибка валидации на создание конфы: %s", err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса", "details": err.Error()}) // Добавлено: возвращаем детали ошибки
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса", "details": err.Error()})
 	}
 
 	// Создание записи в базе данных
@@ -29,6 +29,22 @@ func CreateConf(c *fiber.Ctx) error {
 	if err != nil {
 		log.Errorf("Ошибка создания конфы: %s", err)
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Внутренняя ошибка сервера"})
+	}
+
+	// Асинхронное обновление сокращённой ссылки, если URL предоставлен
+	if conf.URL != "" {
+		go func(confID uint, originalURL string) {
+			shortURL, err := utils.GetShortUrl(originalURL)
+			if err != nil {
+				log.Errorf("Ошибка при сокращении ссылки: %s", err)
+				return
+			}
+
+			// Обновление записи в базе данных с сокращённой ссылкой
+			if err := database.UpdateConfShortURL(confID, shortURL); err != nil {
+				log.Errorf("Ошибка обновления конференции с сокращённой ссылкой: %s", err)
+			}
+		}(conference.ID, conf.URL)
 	}
 
 	return c.JSON(conference)
@@ -84,7 +100,15 @@ func UpdateConf(c *fiber.Ctx) error {
 		})
 	}
 
-	// Обновляем конференцию
+	// Получаем текущую конференцию из базы данных
+	var existingConf models.Conf
+	if err := database.DB.First(&existingConf, id).Error; err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
+			"error": "Конференция не найдена",
+		})
+	}
+
+	// Обновляем конференцию в базе данных (без сокращённой ссылки)
 	updatedConf, err := database.UpdateConfById(uint(id), conf)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -92,7 +116,23 @@ func UpdateConf(c *fiber.Ctx) error {
 		})
 	}
 
-	// Возвращаем обновленную конференцию
+	// Если URL изменился, запускаем асинхронное обновление сокращённой ссылки
+	if conf.URL != "" && conf.URL != existingConf.URL {
+		go func(confID uint, originalURL string) {
+			shortURL, err := utils.GetShortUrl(originalURL)
+			if err != nil {
+				log.Errorf("Ошибка при сокращении ссылки: %s", err)
+				return
+			}
+
+			// Обновление записи в базе данных с сокращённой ссылкой
+			if err := database.UpdateConfShortURL(confID, shortURL); err != nil {
+				log.Errorf("Ошибка обновления конференции с сокращённой ссылкой: %s", err)
+			}
+		}(updatedConf.ID, conf.URL)
+	}
+
+	// Возвращаем обновлённую конференцию
 	return c.JSON(updatedConf)
 }
 
