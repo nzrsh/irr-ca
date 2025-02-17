@@ -12,7 +12,7 @@ func CreateLec(lec models.Lecture) (*models.Lecture, error) {
 	if err := DB.Create(&lec).Error; err != nil {
 		return nil, errors.New("failed to create lec: " + err.Error())
 	}
-
+	log.Infof("Лекция успешно создана: %s", lec.Date)
 	return &lec, nil
 }
 
@@ -25,7 +25,7 @@ func DeleteLecById(id uint64) error {
 	if err := DB.Delete(&lec).Error; err != nil {
 		return errors.New("failed to delete lec")
 	}
-
+	log.Infof("Лекция с ID %d успешно удалена", id)
 	return nil
 }
 
@@ -53,7 +53,7 @@ func UpdateLecById(id uint64, lec models.Lecture) (*models.Lecture, error) {
 	if err := DB.Save(&existingLec).Error; err != nil {
 		return nil, errors.New("failed to update lec")
 	}
-
+	log.Infof("Лекция с ID %d успешно обновлена", id)
 	return &existingLec, nil
 }
 
@@ -63,7 +63,7 @@ func GetLecsByDay(day string) ([]models.Lecture, error) {
 	if err := DB.Where("date = ?", day).Find(&lecs).Error; err != nil {
 		return nil, errors.New("failed to get lecs by day: " + err.Error())
 	}
-
+	log.Infof("Лекции на день %s успешно получены", day)
 	return lecs, nil
 }
 

@@ -1,11 +1,9 @@
 package database
 
 import (
-	"log"
-
+	"github.com/gofiber/fiber/v2/log"
 	"github.com/nzrsh/irr-ca/config"
 	"github.com/nzrsh/irr-ca/models"
-
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
@@ -51,10 +49,10 @@ func createAdminUser() {
 		}
 
 		if err := DB.Create(&admin).Error; err != nil {
-			log.Fatal("Ошибка создания администратора:", err)
+			log.Fatalf("Ошибка создания администратора:", err)
 		}
 
-		log.Println("Администратор успешно создан:", config.AdminUsername)
+		log.Infof("Администратор успешно создан:", config.AdminUsername)
 	} else if result.Error != nil {
 		log.Fatal("Ошибка поиска администратора:", result.Error)
 	}

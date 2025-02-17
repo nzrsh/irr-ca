@@ -1,6 +1,8 @@
 package main
 
 import (
+	"log"
+
 	"github.com/gofiber/fiber/v2"
 	"github.com/nzrsh/irr-ca/config"
 	"github.com/nzrsh/irr-ca/database"
@@ -13,7 +15,12 @@ func main() {
 	database.InitDB()
 
 	app := fiber.New()
+
 	middleware.SetupMiddlewares(app)
 	routes.SetupRoutes(app)
-	app.Listen(":3000")
+
+	err := app.Listen(":3000")
+	if err != nil {
+		log.Fatal("Сервер не смог запустится", err)
+	}
 }

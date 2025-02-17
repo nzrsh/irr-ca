@@ -11,7 +11,7 @@ func CreateConf(conf models.Conf) (*models.Conf, error) {
 	if err := DB.Create(&conf).Error; err != nil {
 		return nil, errors.New("failed to create conference: " + err.Error())
 	}
-
+	log.Infof("Успешно создана конференция: %s", conf.EventName)
 	return &conf, nil
 }
 
@@ -36,6 +36,7 @@ func GetConferencesWithPagination(page, pageSize int) ([]models.Conf, int64, err
 		return nil, 0, err
 	}
 
+	log.Infof("Успешно получены конференции с пагинацией: страница %d, размер страницы %d", page, pageSize)
 	return conferences, totalRecords, nil
 }
 
@@ -70,6 +71,7 @@ func UpdateConfById(id uint, conf models.Conf) (*models.Conf, error) {
 		return nil, errors.New("failed to update conference")
 	}
 
+	log.Infof("Конференция с ID %d успешно обновлена", id)
 	return &existingConf, nil
 }
 
@@ -86,6 +88,7 @@ func DeleteConfById(id uint) error {
 		return errors.New("не удалось удалить конференцию")
 	}
 
+	log.Infof("Конференция с ID %d успешно удалена", id)
 	return nil
 }
 
@@ -94,7 +97,7 @@ func GetConfByID(id uint) (*models.Conf, error) {
 	if err := DB.First(&existingConf, id).Error; err != nil {
 		return nil, errors.New("conference not found")
 	}
-
+	log.Infof("Конференция с ID %d успешно получена", id)
 	return &existingConf, nil
 }
 
