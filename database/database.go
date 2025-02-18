@@ -4,7 +4,6 @@ import (
 	"github.com/gofiber/fiber/v2/log"
 	"github.com/nzrsh/irr-ca/config"
 	"github.com/nzrsh/irr-ca/models"
-	"golang.org/x/crypto/bcrypt"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -36,14 +35,10 @@ func createAdminUser() {
 
 	if result.Error == gorm.ErrRecordNotFound {
 		// Хешируем пароль
-		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(config.AdminPassword), bcrypt.DefaultCost)
-		if err != nil {
-			log.Fatal("Ошибка хеширования пароля:", err)
-		}
 
 		admin := models.User{
 			Username: config.AdminUsername,
-			Password: string(hashedPassword),
+			Password: config.AdminPassword,
 			Role:     "admin",
 			Corps:    "Первый",
 		}
