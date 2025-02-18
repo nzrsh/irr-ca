@@ -8,6 +8,11 @@ import (
 )
 
 func CreateLec(lec models.Lecture) (*models.Lecture, error) {
+	// Проверка, что позиция в группе не занята
+	var existingLec models.Lecture
+	if err := DB.Where("date = ? AND group_type = ? AND position_in_group = ?", lec.Date, lec.GroupType, lec.PositionInGroup).First(&existingLec).Error; err == nil {
+		return nil, errors.New("позиция в группе уже занята")
+	}
 
 	if err := DB.Create(&lec).Error; err != nil {
 		return nil, errors.New("failed to create lec: " + err.Error())
@@ -35,8 +40,15 @@ func UpdateLecById(id uint64, lec models.Lecture) (*models.Lecture, error) {
 		return nil, errors.New("lec not found")
 	}
 
+	// Проверка, что позиция в группе не занята
+	var conflictLec models.Lecture
+	if err := DB.Where("date = ? AND group_type = ? AND position_in_group = ? AND id != ?", lec.Date, lec.GroupType, lec.PositionInGroup, id).First(&conflictLec).Error; err == nil {
+		return nil, errors.New("позиция в группе уже занята")
+	}
+
 	existingLec.Date = lec.Date
 	existingLec.GroupType = lec.GroupType
+	existingLec.PositionInGroup = lec.PositionInGroup
 	existingLec.StartTime = lec.StartTime
 	existingLec.EndTime = lec.EndTime
 	existingLec.AbnormalTime = lec.AbnormalTime

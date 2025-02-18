@@ -21,7 +21,13 @@ func CreateLec(c *fiber.Ctx) error {
 	// Валидация структуры
 	if err := utils.Validate.Struct(lec); err != nil {
 		log.Warnf("Ошибка валидации на создание лекции: %s", err)
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса", "details": err.Error()}) // Добавлено: возвращаем детали ошибки
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса", "details": err.Error()})
+	}
+
+	// Проверка, что позиция в группе не занята
+	var existingLec models.Lecture
+	if err := database.DB.Where("date = ? AND group_type = ? AND position_in_group = ?", lec.Date, lec.GroupType, lec.PositionInGroup).First(&existingLec).Error; err == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Позиция в группе уже занята"})
 	}
 
 	// Создание записи в базе данных
@@ -31,6 +37,7 @@ func CreateLec(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{"error": "Внутренняя ошибка сервера"})
 	}
 
+	// Сокращение ссылки (если URL указан)
 	if lec.URL != "" {
 		go func(lecID uint, originalURL string) {
 			shortURL, err := utils.GetShortUrl(originalURL)
@@ -39,9 +46,9 @@ func CreateLec(c *fiber.Ctx) error {
 				return
 			}
 
-			// Обновление записи в базе данных с сокращенной ссылкой
+			// Обновление записи с сокращённой ссылкой
 			if err := database.UpdateLecShortURL(lecID, shortURL); err != nil {
-				log.Errorf("Ошибка обновления лекции с сокращенной ссылкой: %s", err)
+				log.Errorf("Ошибка обновления лекции с сокращённой ссылкой: %s", err)
 			}
 		}(lecture.ID, lec.URL)
 	}
@@ -50,10 +57,9 @@ func CreateLec(c *fiber.Ctx) error {
 }
 
 func GetLecsByCurrentDate(c *fiber.Ctx) error {
-	// Получаем дату из параметров запроса
 	currentDate := c.Params("date")
 
-	// Проверяем формат даты
+	// Проверка формата даты
 	_, err := time.Parse("2006-01-02", currentDate)
 	if err != nil {
 		log.Errorf("Неверный формат даты: %s", currentDate)
@@ -62,7 +68,7 @@ func GetLecsByCurrentDate(c *fiber.Ctx) error {
 		})
 	}
 
-	// Получаем данные из базы данных
+	// Получение данных из базы данных
 	lecs, err := database.GetLecsByDay(currentDate)
 	if err != nil {
 		log.Errorf("Ошибка при получении данных из базы данных: %s", err)
@@ -71,16 +77,17 @@ func GetLecsByCurrentDate(c *fiber.Ctx) error {
 		})
 	}
 
-	if len(lecs) == 0 {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Лекции не найдены.",
-		})
+	// Формирование структуры таблицы
+	table := make([]*models.Lecture, 48) // 48 строк
+	for _, lec := range lecs {
+		index := (lec.GroupType-1)*3 + (lec.PositionInGroup - 1)
+		table[index] = &lec
 	}
-	return c.JSON(lecs)
+
+	return c.JSON(table)
 }
 
 func UpdateLec(c *fiber.Ctx) error {
-	// Получаем ID лекции из параметров запроса
 	id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -88,7 +95,6 @@ func UpdateLec(c *fiber.Ctx) error {
 		})
 	}
 
-	// Получаем данные из тела запроса
 	var lec models.Lecture
 	if err := c.BodyParser(&lec); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{
@@ -96,15 +102,13 @@ func UpdateLec(c *fiber.Ctx) error {
 		})
 	}
 
-	// Получаем текущую лекцию из базы данных
+	// Проверка, что позиция в группе не занята
 	var existingLec models.Lecture
-	if err := database.DB.First(&existingLec, id).Error; err != nil {
-		return c.Status(fiber.StatusNotFound).JSON(fiber.Map{
-			"error": "Лекция не найдена",
-		})
+	if err := database.DB.Where("date = ? AND group_type = ? AND position_in_group = ? AND id != ?", lec.Date, lec.GroupType, lec.PositionInGroup, id).First(&existingLec).Error; err == nil {
+		return c.Status(fiber.StatusConflict).JSON(fiber.Map{"error": "Позиция в группе уже занята"})
 	}
 
-	// Обновляем лекцию в базе данных (без сокращённой ссылки)
+	// Обновление лекции
 	updatedLec, err := database.UpdateLecById(id, lec)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
@@ -112,8 +116,8 @@ func UpdateLec(c *fiber.Ctx) error {
 		})
 	}
 
-	// Если URL изменился, запускаем асинхронное обновление сокращённой ссылки
-	if lec.URL != "" && lec.URL != existingLec.URL {
+	// Сокращение ссылки (если URL изменился)
+	if lec.URL != "" && lec.URL != updatedLec.URL {
 		go func(lecID uint, originalURL string) {
 			shortURL, err := utils.GetShortUrl(originalURL)
 			if err != nil {
@@ -121,14 +125,12 @@ func UpdateLec(c *fiber.Ctx) error {
 				return
 			}
 
-			// Обновление записи в базе данных с сокращённой ссылкой
 			if err := database.UpdateLecShortURL(lecID, shortURL); err != nil {
 				log.Errorf("Ошибка обновления лекции с сокращённой ссылкой: %s", err)
 			}
 		}(updatedLec.ID, lec.URL)
 	}
 
-	// Возвращаем обновлённую лекцию
 	return c.JSON(updatedLec)
 }
 
