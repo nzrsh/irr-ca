@@ -3,7 +3,6 @@ package handlers
 import (
 	"github.com/nzrsh/irr-ca/database"
 	"github.com/nzrsh/irr-ca/models"
-	"github.com/nzrsh/irr-ca/utils"
 
 	"github.com/gofiber/fiber/v2"
 )
@@ -24,9 +23,6 @@ func CreateUser(c *fiber.Ctx) error {
 	if err := c.BodyParser(&user); err != nil {
 		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Неверный формат запроса"})
 	}
-
-	hashedPassword, _ := utils.HashPassword(user.Password)
-	user.Password = hashedPassword
 
 	database.DB.Create(&user)
 	return c.JSON(user)
