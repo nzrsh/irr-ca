@@ -32,7 +32,7 @@ func SetupRoutes(app *fiber.App) {
 		lecs.Put("/:id", handlers.UpdateLec)
 		lecs.Delete("/:id", handlers.DeleteLecById)
 
-		backup := api.Group("/backup")
-		backup.Get("/:date", handlers.MakeBackupToExcel)
+		//backup := api.Group("/backup")
+		//backup.Get("/:date", handlers.MakeBackupToExcel)
 	}
 }

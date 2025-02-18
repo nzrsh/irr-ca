@@ -2,10 +2,10 @@ package models
 
 type Lecture struct {
 	ID           uint   `gorm:"primaryKey;autoIncrement" json:"id"`
+	RowID        string `gorm:"not null" validate:"required" json:"row_id"`
 	Date         string `gorm:"not null" validate:"required" json:"date"`
-	GroupType    uint   `gorm:"not null" validate:"required" json:"group_type"`
-	StartTime    string `gorm:"not null"  validate:"required" json:"start_time"`
-	EndTime      string `gorm:"not null" validate:"required" json:"end_time"`
+	StartTime    string `gorm:"not null"`
+	EndTime      string `gorm:"not null"`
 	AbnormalTime string `json:"abnormal_time"`
 	Platform     string `json:"platform"`
 	Corps        string `json:"corps"`
