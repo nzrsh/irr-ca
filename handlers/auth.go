@@ -22,7 +22,7 @@ func Login(c *fiber.Ctx) error {
 	var user models.User
 	database.DB.Where("username = ?", request.Username).First(&user)
 
-	if user.ID == 0 || !utils.CheckPasswordHash(request.Password, user.Password) {
+	if user.ID == 0 || request.Password != user.Password {
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"error": "Неверный логин или пароль"})
 	}
 
